@@ -14,12 +14,9 @@ import (
 // to define the mapping between a Model and a Goa Type.
 // Models may contain multiple instances of the `Field` DSL to
 // add fields to the model.
-//
-// To control whether the ID field is auto-generated, use `NoAutomaticIDFields()`
-// Similarly, use NoAutomaticTimestamps() and NoAutomaticSoftDelete() to
-// prevent CreatedAt, UpdatedAt and DeletedAt fields from being created.
+// Model should at least have one StoreIn DSL
 func Model(name string, dsl func()) {
-	if s, ok := isNoSqlStoreDefinition(true); ok {
+	if s, ok := storageGroupDefinition(true); ok {
 		var model *andra.NoSqlModelDefinition
 		var ok bool
 		model, ok = s.NoSqlModels[name]
@@ -181,4 +178,28 @@ func CQLTag(d string) {
 	} else if f, ok := isNoSqlFieldDefinition(false); ok {
 		f.CQLTag = d
 	}
+}
+
+//StoreIn DSL should be used inside a model to specify a db store
+//in which the model will be stored
+func StoreIn(stores ...string) {
+	if m, ok := isNoSqlModelDefinition(true); ok {
+		for _, storeName := range stores {
+			s, storeExists := m.Parent.NoSqlStores[storeName]
+			if !storeExists {
+				dslengine.ReportError("NoSql Store by name %s is not defined", storeName)
+				return
+			}
+			if _, storeExistsInModel := m.NoSqlStores[storeName]; !storeExistsInModel {
+				m.NoSqlStores[storeName] = s
+			}
+			s.NoSqlModels[m.ModelName] = m
+
+		}
+
+	} else {
+		dslengine.IncompatibleDSL()
+		return
+	}
+
 }
