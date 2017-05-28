@@ -19,6 +19,7 @@ type StorageGroupDefinition struct {
 	Description   string
 	NoSqlStores   map[string]*NoSqlStoreDefinition
 	NoSqlModels   map[string]*NoSqlModelDefinition
+	LOVs          map[string]*LOVDefinition
 }
 
 // NoSqlStoreDefinition is the parent configuration structure for andra NoSql model definitions.
@@ -30,7 +31,8 @@ type NoSqlStoreDefinition struct {
 	Parent        *StorageGroupDefinition
 	Type          NoSqlStorageType
 	NoSqlModels   map[string]*NoSqlModelDefinition
-	LOVs          map[string]*LOVDefinition
+	Cluster       []string
+	KeySpace      string
 }
 
 // NoSqlModelDefinition implements the storage of a domain model into a
@@ -147,7 +149,7 @@ type NoSqlFieldDefinition struct {
 type LOVDefinition struct {
 	dslengine.Definition
 	DefinitionDSL func()
-	Parent        *NoSqlStoreDefinition
+	Parent        *StorageGroupDefinition
 	Name          string
 	Type          string
 	Values        []*LOVValueDefinition

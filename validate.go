@@ -31,10 +31,6 @@ func (a *NoSqlStoreDefinition) Validate() *dslengine.ValidationErrors {
 	if a.Parent == nil {
 		verr.Add(a, "missing storage group parent")
 	}
-	a.IterateModels(func(model *NoSqlModelDefinition) error {
-		verr.Merge(model.Validate())
-		return nil
-	})
 
 	return verr.AsError()
 }

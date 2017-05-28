@@ -13,6 +13,8 @@ import (
 func NewStorageGroupDefinition() *StorageGroupDefinition {
 	m := &StorageGroupDefinition{
 		NoSqlStores: make(map[string]*NoSqlStoreDefinition),
+		NoSqlModels: make(map[string]*NoSqlModelDefinition),
+		LOVs:        make(map[string]*LOVDefinition),
 	}
 	return m
 }
@@ -80,33 +82,67 @@ func (sd *StorageGroupDefinition) IterateSets(iterator dslengine.SetIterator) {
 	iterator([]dslengine.Definition{sd})
 	sd.IterateStores(func(store *NoSqlStoreDefinition) error {
 		iterator([]dslengine.Definition{store})
-		//iterate LOVs
-		store.IterateLOVs(func(lov *LOVDefinition) error {
-			iterator([]dslengine.Definition{lov})
+		return nil
+	})
+	//iterate LOVs
+	sd.IterateLOVs(func(lov *LOVDefinition) error {
+		iterator([]dslengine.Definition{lov})
+		return nil
+	})
+
+	//iterate models
+	sd.IterateModels(func(model *NoSqlModelDefinition) error {
+		iterator([]dslengine.Definition{model})
+		model.IterateFields(func(field *NoSqlFieldDefinition) error {
+			iterator([]dslengine.Definition{field})
 			return nil
 		})
-
-		//iterate models
-		store.IterateModels(func(model *NoSqlModelDefinition) error {
-			iterator([]dslengine.Definition{model})
-			model.IterateFields(func(field *NoSqlFieldDefinition) error {
-				iterator([]dslengine.Definition{field})
-				return nil
-			})
-			model.IterateBuildSources(func(bs *BuildSource) error {
-				iterator([]dslengine.Definition{bs})
-				return nil
-			})
-
+		model.IterateBuildSources(func(bs *BuildSource) error {
+			iterator([]dslengine.Definition{bs})
 			return nil
 		})
 
 		return nil
 	})
+
 }
 
 // Reset resets the storage group to pre DSL execution state.
 func (sd *StorageGroupDefinition) Reset() {
 	n := NewStorageGroupDefinition()
 	*sd = *n
+}
+
+// IterateLovs runs an iterator function once per LOV in the Store's LOV list.
+func (sd *StorageGroupDefinition) IterateLOVs(it LovIterator) error {
+	names := make([]string, len(sd.LOVs))
+	i := 0
+	for n := range sd.LOVs {
+		names[i] = n
+		i++
+	}
+	sort.Strings(names)
+	for _, n := range names {
+		if err := it(sd.LOVs[n]); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// IterateModels runs an iterator function once per Model in the Store's model list.
+func (sd *StorageGroupDefinition) IterateModels(it ModelIterator) error {
+	names := make([]string, len(sd.NoSqlModels))
+	i := 0
+	for n := range sd.NoSqlModels {
+		names[i] = n
+		i++
+	}
+	sort.Strings(names)
+	for _, n := range names {
+		if err := it(sd.NoSqlModels[n]); err != nil {
+			return err
+		}
+	}
+	return nil
 }

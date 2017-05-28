@@ -12,7 +12,7 @@ func LOV(name string, typ string, dsl func()) {
 	fmt.Println("inside LOV DSL")
 	name = codegen.Goify(name, true)
 	name = SanitizeFieldName(name)
-	if s, ok := isNoSqlStoreDefinition(true); ok {
+	if s, ok := storageGroupDefinition(true); ok {
 		lov := andra.NewLOVDefinition()
 		lov.Name = name
 		lov.Type = typ

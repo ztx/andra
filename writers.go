@@ -318,7 +318,7 @@ func writeLOV(lov *LOVDefinition) string {
 	return out
 }
 
-func writeLOVs(store *NoSqlStoreDefinition) string {
+func writeLOVs(store *StorageGroupDefinition) string {
 	out := ""
 	lovs := []*LOVDefinition{}
 	store.IterateLOVs(

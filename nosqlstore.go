@@ -2,7 +2,6 @@ package andra
 
 import (
 	"fmt"
-	"sort"
 
 	"github.com/goadesign/goa/dslengine"
 )
@@ -12,7 +11,6 @@ import (
 func NewNoSqlStoreDefinition() *NoSqlStoreDefinition {
 	m := &NoSqlStoreDefinition{
 		NoSqlModels: make(map[string]*NoSqlModelDefinition),
-		LOVs:        make(map[string]*LOVDefinition),
 	}
 	return m
 }
@@ -37,38 +35,4 @@ func (sd NoSqlStoreDefinition) Children() []dslengine.Definition {
 		stores = append(stores, s)
 	}
 	return stores
-}
-
-// IterateModels runs an iterator function once per Model in the Store's model list.
-func (sd *NoSqlStoreDefinition) IterateModels(it ModelIterator) error {
-	names := make([]string, len(sd.NoSqlModels))
-	i := 0
-	for n := range sd.NoSqlModels {
-		names[i] = n
-		i++
-	}
-	sort.Strings(names)
-	for _, n := range names {
-		if err := it(sd.NoSqlModels[n]); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// IterateLovs runs an iterator function once per LOV in the Store's LOV list.
-func (sd *NoSqlStoreDefinition) IterateLOVs(it LovIterator) error {
-	names := make([]string, len(sd.LOVs))
-	i := 0
-	for n := range sd.LOVs {
-		names[i] = n
-		i++
-	}
-	sort.Strings(names)
-	for _, n := range names {
-		if err := it(sd.LOVs[n]); err != nil {
-			return err
-		}
-	}
-	return nil
 }

@@ -41,6 +41,29 @@ func Store(name string, storeType andra.NoSqlStorageType, dsl func()) {
 
 }
 
+func Cluster(nodes ...string) {
+	if s, ok := isNoSqlStoreDefinition(true); ok {
+		s.Cluster = nodes
+	} else {
+		dslengine.IncompatibleDSL()
+		return
+	}
+}
+
+//KeySpace is required to get a cassandra session
+func KeySpace(keySpace string) {
+	if s, ok := isNoSqlStoreDefinition(true); ok {
+		if s.Type != andra.Cassandra {
+			dslengine.ReportError("KeySpace is valid only for a Cassandra NoSQL store")
+			return
+		}
+		s.KeySpace = keySpace
+	} else {
+		dslengine.IncompatibleDSL()
+		return
+	}
+}
+
 // // NoAutomaticIDFields applies to a `Store` or `Model` type.  It allows you
 // // to turn off the default behavior that will automatically create
 // // an ID/int Primary Key for each model.
