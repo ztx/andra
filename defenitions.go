@@ -11,13 +11,14 @@ type NoSqlStorageType string
 // FieldType is the storage data type for a database field.
 type FieldType string
 
-// StorageGroupDefinition is the parent configuration structure for andra definitions.
+// StorageGroupDefinition is the parent configuration structure for nosql definitions.
 type StorageGroupDefinition struct {
 	dslengine.Definition
 	DefinitionDSL func()
 	Name          string
 	Description   string
 	NoSqlStores   map[string]*NoSqlStoreDefinition
+	NoSqlModels   map[string]*NoSqlModelDefinition
 }
 
 // NoSqlStoreDefinition is the parent configuration structure for andra NoSql model definitions.
@@ -29,6 +30,7 @@ type NoSqlStoreDefinition struct {
 	Parent        *StorageGroupDefinition
 	Type          NoSqlStorageType
 	NoSqlModels   map[string]*NoSqlModelDefinition
+	LOVs          map[string]*LOVDefinition
 }
 
 // NoSqlModelDefinition implements the storage of a domain model into a
@@ -36,16 +38,16 @@ type NoSqlStoreDefinition struct {
 type NoSqlModelDefinition struct {
 	dslengine.Definition
 	*design.UserTypeDefinition
-	DefinitionDSL func()
-	ModelName     string
-	Description   string
-	GoaType       *design.MediaTypeDefinition
-	Parent        *NoSqlStoreDefinition
-	BuiltFrom     map[string]*design.UserTypeDefinition
-	BuildSources  []*BuildSource
-	RenderTo      map[string]*design.MediaTypeDefinition
-	BelongsTo     map[string]*NoSqlModelDefinition
-
+	DefinitionDSL    func()
+	ModelName        string
+	Description      string
+	GoaType          *design.MediaTypeDefinition
+	Parent           *StorageGroupDefinition
+	BuiltFrom        map[string]*design.UserTypeDefinition
+	BuildSources     []*BuildSource
+	RenderTo         map[string]*design.MediaTypeDefinition
+	BelongsTo        map[string]*NoSqlModelDefinition
+	NoSqlStores      map[string]*NoSqlStoreDefinition
 	Alias            string // gocql:tablename
 	Cached           bool
 	CacheDuration    int
@@ -137,6 +139,26 @@ type NoSqlFieldDefinition struct {
 	ClusterKey        bool
 	ReadOnly          bool
 	Mappings          map[string]*MapDefinition
+
+	LOV *LOVDefinition
+}
+
+//LOV definition s
+type LOVDefinition struct {
+	dslengine.Definition
+	DefinitionDSL func()
+	Parent        *NoSqlStoreDefinition
+	Name          string
+	Type          string
+	Values        []*LOVValueDefinition
+}
+
+type LOVValueDefinition struct {
+	dslengine.Definition
+	Parent *LOVDefinition
+	Name   string
+	Type   string
+	Value  string
 }
 
 // StoreIterator is a function that iterates over NoSql Stores in a
@@ -154,3 +176,5 @@ type FieldIterator func(m *NoSqlFieldDefinition) error
 // BuildSourceIterator is a function that iterates over Fields
 // in a NoSqlModel.
 type BuildSourceIterator func(m *BuildSource) error
+
+type LovIterator func(m *LOVDefinition) error

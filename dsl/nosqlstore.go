@@ -5,9 +5,8 @@ import (
 	"github.com/ztx/andra"
 )
 
-// Store represents a database.  andra lets you specify
-// a database type, but it's currently not used for any generation
-// logic.
+// Store represents a database.  andra lets you define
+// a database type
 func Store(name string, storeType andra.NoSqlStorageType, dsl func()) {
 	if name == "" || len(name) == 0 {
 		dslengine.ReportError("NoSql Store requires a name.")

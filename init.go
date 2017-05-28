@@ -1,6 +1,6 @@
 package andra
 
-// andraDesign is the root definition for andra
+// NoDesign is the root definition for andra
 var NoSqlDesign *StorageGroupDefinition
 
 const (

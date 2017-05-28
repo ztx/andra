@@ -19,6 +19,7 @@ type (
 	UserTypeTemplateData struct {
 		APIDefinition *design.APIDefinition
 		UserType      *NoSqlModelDefinition
+		LOV           *LOVDefinition
 		DefaultPkg    string
 		AppPkg        string
 	}
@@ -35,6 +36,13 @@ type (
 	UserHelperWriter struct {
 		*codegen.SourceFile
 		UserHelperTmpl *template.Template
+	}
+
+	// LOVWriter generate code for a LOV type.
+	// LOVs are data structures defined in the DSL with "LOV".
+	LOVWriter struct {
+		*codegen.SourceFile
+		LOVTmpl *template.Template
 	}
 )
 
@@ -275,6 +283,87 @@ func viewSelect(ut *NoSqlModelDefinition, v *design.ViewDefinition) string {
 	return strings.Join(fields, ",")
 }
 
+func writeLOV(lov *LOVDefinition) string {
+	out := "type " + lov.Name + " " + lov.Type
+	//fmt.Println("len of LOV values ", len(lov.Values))
+	//first print all constants with values
+	//specified
+	var strConst string
+	var autoLovVal []*LOVValueDefinition
+	for _, val := range lov.Values {
+		if val.Value != "" {
+			strConst = strConst + "\n" + val.Name + " " + val.Type + "=\"" + val.Value + "\""
+		} else {
+			autoLovVal = append(autoLovVal, val)
+		}
+	}
+	if len(strConst) > 0 {
+		out = out + "\nconst (" + strConst + "\n)"
+	}
+
+	//now group those which need auto increment
+	var autoConst string
+	for i, val := range autoLovVal {
+		if val.Value == "" {
+			if i == 0 {
+				autoConst = val.Name + " " + val.Type + " = iota "
+			} else {
+				autoConst = autoConst + "\n" + val.Name
+			}
+		}
+	}
+	if len(autoConst) > 0 {
+		out = out + "\nconst (\n" + autoConst + "\n)"
+	}
+	return out
+}
+
+func writeLOVs(store *NoSqlStoreDefinition) string {
+	out := ""
+	lovs := []*LOVDefinition{}
+	store.IterateLOVs(
+		func(lov *LOVDefinition) error {
+			lovs = append(lovs, lov)
+			return nil
+		})
+
+	for _, lov := range lovs {
+		out = out + "type " + lov.Name + " " + lov.Type
+		//fmt.Println("len of LOV values ", len(lov.Values))
+		//first print all constants with values
+		//specified
+		var strConst string
+		var autoLovVal []*LOVValueDefinition
+		for _, val := range lov.Values {
+			if val.Value != "" {
+				strConst = strConst + "\n" + val.Name + " " + val.Type + "=\"" + val.Value + "\""
+			} else {
+				autoLovVal = append(autoLovVal, val)
+			}
+		}
+		if len(strConst) > 0 {
+			out = out + "\nconst (" + strConst + "\n)"
+		}
+
+		//now group those which need auto increment
+		var autoConst string
+		for i, val := range autoLovVal {
+			if val.Value == "" {
+				if i == 0 {
+					autoConst = val.Name + " " + val.Type + " << iota "
+				} else {
+					autoConst = autoConst + "\n" + val.Name
+				}
+			}
+		}
+		if len(autoConst) > 0 {
+			out = out + "\nconst (\n" + strConst + "\n)"
+		}
+	}
+
+	return out
+}
+
 func viewFields(ut *NoSqlModelDefinition, v *design.ViewDefinition) []*NoSqlFieldDefinition {
 	obj := v.Type.(design.Object)
 	var fields []*NoSqlFieldDefinition
@@ -368,6 +457,21 @@ func (w *UserTypesWriter) Execute(data *UserTypeTemplateData) error {
 	return w.ExecuteTemplate("types", userTypeT, fm, data)
 }
 
+func NewLOVWriter(filename string) (*LOVWriter, error) {
+	file, err := codegen.SourceFileFor(filename)
+	if err != nil {
+		return nil, err
+	}
+	return &LOVWriter{SourceFile: file}, nil
+}
+
+func (w *LOVWriter) Execute(data *UserTypeTemplateData) error {
+	fm := make(map[string]interface{})
+	fm["wlov"] = writeLOV
+
+	return w.ExecuteTemplate("lovs", lovT, fm, data)
+}
+
 // arrayAttribute returns the array element attribute definition.
 func arrayAttribute(a *design.AttributeDefinition) *design.AttributeDefinition {
 	return a.Type.(*design.Array).ElemType
@@ -402,6 +506,32 @@ func (m {{$ut.ModelName}}) TableName() string {
 return "{{ $ut.Alias}}" {{ else }} return "{{ $ut.TableName }}"
 {{end}}
 }
+
+//ValueHolder returns the pointer to struct field identified by name; can be used to
+//store the scanned value from db
+func (m *{{$ut.ModelName}})ValueHolder(attrib string) interface{} {
+var out interface{}
+	switch attrib {
+		{{range $i, $field := $ut.Fields}}
+		case "{{$field}}":
+			out=&m.{{$field}}
+		{{end}}
+	}
+return out	
+}
+
+func (m *{{$ut.ModelName}})Validate() error{
+	if {{ $ut.NotNullFieldNamesCheck "m"}}{
+		return error.New("Some null fields are found which should not be null")
+	}
+	{{$lovValidation:=$ut.LovValidationCheck "m"}}
+	{{if ne $lovValidation ""}}
+	if {{$lovValidation}}{
+		return error.New("Invalid value for an attribute")
+	}
+	{{end}}
+}
+
 // {{$ut.ModelName}}DB is the implementation of the storage interface for
 // {{$ut.ModelName}}.
 type {{$ut.ModelName}}DB struct {
@@ -652,5 +782,11 @@ func (m *{{.Model.ModelName}}DB) One{{goify .Media.TypeName true}}{{if not (eq .
 	view := *native.{{.Model.ModelName}}To{{goify .Media.UserTypeDefinition.TypeName true}}{{if not (eq .ViewName "default")}}{{goify .ViewName true}}{{end}}()
 	return &view, err
 }
+`
+
+	lovT = `
+//Creating LOVs 
+{{wlov .LOV}}
+
 `
 )

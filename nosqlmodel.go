@@ -393,3 +393,44 @@ func parseAttributeArgs(baseAttr *design.AttributeDefinition, args ...interface{
 
 	return dataType, description, dsl
 }
+
+//used to build the structure
+func (model NoSqlModelDefinition) Fields() []string {
+	// Get a sortable slice of field names
+	var keys []string
+	for k := range model.NoSqlFields {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+//used to build Validate() function
+
+func (f *NoSqlModelDefinition) NotNullFieldNamesCheck(v string) string {
+	var attr []string
+	//pk are not null columns
+	for _, pk := range f.PrimaryKeys {
+		attr = append(
+			attr, v+"."+pk.FieldName+" == nil",
+		)
+	}
+	//slice.Contains()
+	return strings.Join(attr, " || ")
+}
+
+func (f *NoSqlModelDefinition) LovValidationCheck(v string) string {
+	var conds []string
+
+	f.IterateFields(func(field *NoSqlFieldDefinition) error {
+		if field.LOV != nil {
+			for _, lovValue := range field.LOV.Values {
+
+				conds = append(conds, v+"."+field.FieldName+" != "+lovValue.Name)
+			}
+			return nil
+		}
+		return nil
+	})
+	return strings.Join(conds, " && ")
+}

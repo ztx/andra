@@ -45,7 +45,7 @@ func Generate() (files []string, err error) {
 	}
 
 	// Now proceed
-	appPkgPath, err := codegen.PackagePath(filepath.Join(outDir, appPkg))
+	appPkgPath, err := codegen.PackagePath("") //(filepath.Join(outDir, appPkg))
 	if err != nil {
 		return nil, fmt.Errorf("invalid app package: %s", err)
 	}
@@ -96,7 +96,55 @@ func (g *Generator) Cleanup() {
 func (g *Generator) generateUserTypes(outdir string, api *design.APIDefinition) error {
 	var modelname, filename string
 	err := NoSqlDesign.IterateStores(func(store *NoSqlStoreDefinition) error {
-		err := store.IterateModels(func(model *NoSqlModelDefinition) error {
+		err := store.IterateLOVs(
+			func(lov *LOVDefinition) error {
+				fname := fmt.Sprintf("%s_LOV.go", lov.Name)
+				lovFile := filepath.Join(outdir, fname)
+				err := os.RemoveAll(lovFile)
+				if err != nil {
+					fmt.Println(err)
+				}
+				lovWr, err := NewLOVWriter(lovFile)
+				if err != nil {
+					panic(err) // bug
+				}
+				title := fmt.Sprintf("%s: Models", api.Context())
+				imports := []*codegen.ImportSpec{
+					codegen.SimpleImport(g.appPkgPath),
+					codegen.SimpleImport("time"),
+					codegen.SimpleImport("github.com/goadesign/goa"),
+					codegen.SimpleImport("github.com/jinzhu/gorm"),
+					codegen.SimpleImport("golang.org/x/net/context"),
+					codegen.SimpleImport("golang.org/x/net/context"),
+					codegen.SimpleImport("github.com/goadesign/goa/uuid"),
+					codegen.SimpleImport("github.com/ztx/entp/app"),
+				}
+				lovWr.WriteHeader(title, g.targetModelPkg, imports)
+				data := &UserTypeTemplateData{
+					APIDefinition: api,
+					LOV:           lov,
+					DefaultPkg:    g.targetModelPkg,
+					AppPkg:        g.appPkgPath,
+				}
+				err = lovWr.Execute(data)
+				g.genfiles = append(g.genfiles, lovFile)
+				if err != nil {
+					fmt.Println(err)
+					return err
+				}
+				err = lovWr.FormatCode()
+				if err != nil {
+					fmt.Println(err)
+				}
+				return err
+
+			})
+		if err != nil {
+
+			return err
+
+		}
+		err = store.IterateModels(func(model *NoSqlModelDefinition) error {
 			modelname = strings.ToLower(codegen.Goify(model.ModelName, false))
 
 			filename = fmt.Sprintf("%s.go", modelname)
