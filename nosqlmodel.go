@@ -135,9 +135,7 @@ func (f *NoSqlModelDefinition) Attribute() *design.AttributeDefinition {
 }
 
 // Project does something interesting, and I don't remember if I use it
-// anywhere.
-//
-// TODO find out
+// anywhere. used in template
 func (f *NoSqlModelDefinition) Project(name, v string) *design.MediaTypeDefinition {
 	p, _, _ := f.RenderTo[name].Project(v)
 	return p
@@ -433,4 +431,12 @@ func (f *NoSqlModelDefinition) LovValidationCheck(v string) string {
 		return nil
 	})
 	return strings.Join(conds, " && ")
+}
+
+func (f *NoSqlModelDefinition) ColumnName(v string) string {
+	out := f.NoSqlFields[v].DatabaseFieldName
+	if out == "" {
+		out = f.NoSqlFields[v].Underscore()
+	}
+	return out
 }

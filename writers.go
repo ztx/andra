@@ -454,7 +454,7 @@ func (w *UserTypesWriter) Execute(data *UserTypeTemplateData) error {
 	fm["plural"] = inflect.Pluralize
 	fm["gtt"] = codegen.GoTypeTransform
 	fm["gttn"] = codegen.GoTypeTransformName
-	return w.ExecuteTemplate("types", userTypeT, fm, data)
+	return w.ExecuteTemplate("types", modelDataStoreT, fm, data)
 }
 
 func NewLOVWriter(filename string) (*LOVWriter, error) {

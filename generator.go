@@ -20,6 +20,7 @@ type Generator struct {
 	targetDBPkg    string   // depends on storage type eg:cassandra
 	appPkg         string   // Generated goa app package name - "app" by default
 	appPkgPath     string   // Generated goa app package import path
+	modelPkgPath   string
 }
 
 // Generate is the generator entry point called by the meta generator.
@@ -45,13 +46,21 @@ func Generate() (files []string, err error) {
 	}
 
 	// Now proceed
-	appPkgPath, err := codegen.PackagePath("") //(filepath.Join(outDir, appPkg))
+	appPkgPath, err := codegen.PackagePath(filepath.Join(outDir, appPkg))
 	if err != nil {
 		return nil, fmt.Errorf("invalid app package: %s", err)
 	}
+	modelPkgPath, err := codegen.PackagePath(filepath.Join(outDir, targetModelPkg))
+	if err != nil {
+		return nil, fmt.Errorf("invalid model package: %s", err)
+	}
 	outDir = filepath.Join(outDir, targetModelPkg)
 
-	g := &Generator{outDir: outDir, targetModelPkg: targetModelPkg, targetDBPkg: dbPkg, appPkg: appPkg, appPkgPath: appPkgPath}
+	g := &Generator{outDir: outDir,
+		targetModelPkg: targetModelPkg, targetDBPkg: dbPkg,
+		appPkg: appPkg, appPkgPath: appPkgPath,
+		modelPkgPath: modelPkgPath,
+	}
 
 	return g.Generate(design.Design)
 
@@ -72,10 +81,20 @@ func (g *Generator) Generate(api *design.APIDefinition) (_ []string, err error) 
 		return nil, err
 	}
 
+	if _, ok := NoSqlDesign.NoSqlStores["cassandra"]; ok {
+		if err = os.MkdirAll(g.outDir+"/cassandra", 0755); err != nil {
+			return nil, err
+		}
+	}
+
 	if err := g.generateUserTypes(g.outDir, api); err != nil {
 		return g.genfiles, err
 	}
 	if err := g.generateUserHelpers(g.outDir, api); err != nil {
+		return g.genfiles, err
+	}
+
+	if err := g.generateStores(g.outDir, api); err != nil {
 		return g.genfiles, err
 	}
 
@@ -120,6 +139,8 @@ func (g *Generator) generateUserTypes(outdir string, api *design.APIDefinition) 
 				codegen.SimpleImport("golang.org/x/net/context"),
 				codegen.SimpleImport("github.com/goadesign/goa/uuid"),
 				codegen.SimpleImport("github.com/ztx/entp/app"),
+				codegen.SimpleImport("errors"),
+				codegen.SimpleImport("logs"),
 			}
 			lovWr.WriteHeader(title, g.targetModelPkg, imports)
 			data := &UserTypeTemplateData{
@@ -151,11 +172,20 @@ func (g *Generator) generateUserTypes(outdir string, api *design.APIDefinition) 
 
 		filename = fmt.Sprintf("%s.go", modelname)
 		utFile := filepath.Join(outdir, filename)
+		ctFile := filepath.Join(outdir, "cassandra", filename)
 		err := os.RemoveAll(utFile)
 		if err != nil {
 			fmt.Println(err)
 		}
+		err = os.RemoveAll(ctFile)
+		if err != nil {
+			fmt.Println(err)
+		}
 		utWr, err := NewUserTypesWriter(utFile)
+		if err != nil {
+			panic(err) // bug
+		}
+		cWr, err := NewCassandraModelWriter(ctFile)
 		if err != nil {
 			panic(err) // bug
 		}
@@ -168,6 +198,9 @@ func (g *Generator) generateUserTypes(outdir string, api *design.APIDefinition) 
 			codegen.SimpleImport("golang.org/x/net/context"),
 			codegen.SimpleImport("golang.org/x/net/context"),
 			codegen.SimpleImport("github.com/goadesign/goa/uuid"),
+			codegen.SimpleImport("errors"),
+			codegen.SimpleImport("log"),
+			codegen.SimpleImport(g.modelPkgPath),
 		}
 
 		if model.Cached {
@@ -177,6 +210,7 @@ func (g *Generator) generateUserTypes(outdir string, api *design.APIDefinition) 
 			imports = append(imports, imp)
 		}
 		utWr.WriteHeader(title, g.targetModelPkg, imports)
+		cWr.WriteHeader(title, "cassandra", imports)
 		data := &UserTypeTemplateData{
 			APIDefinition: api,
 			UserType:      model,
@@ -190,6 +224,17 @@ func (g *Generator) generateUserTypes(outdir string, api *design.APIDefinition) 
 			return err
 		}
 		err = utWr.FormatCode()
+		if err != nil {
+			fmt.Println(err)
+		}
+		//data.DefaultPkg = "cassandra"
+		err = cWr.Execute(data)
+		g.genfiles = append(g.genfiles, ctFile)
+		if err != nil {
+			fmt.Println(err)
+			return err
+		}
+		err = cWr.FormatCode()
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -227,9 +272,9 @@ func (g *Generator) generateUserHelpers(outdir string, api *design.APIDefinition
 			codegen.SimpleImport("time"),
 			codegen.SimpleImport("github.com/goadesign/goa"),
 			codegen.SimpleImport("github.com/jinzhu/gorm"),
-			codegen.SimpleImport("golang.org/x/net/context"),
-			codegen.SimpleImport("golang.org/x/net/context"),
+			codegen.SimpleImport("context"),
 			codegen.SimpleImport("github.com/goadesign/goa/uuid"),
+			codegen.SimpleImport("errors"),
 		}
 
 		if model.Cached {
@@ -263,5 +308,54 @@ func (g *Generator) generateUserHelpers(outdir string, api *design.APIDefinition
 
 func (g *Generator) generateDBPkg(outdir string, api *design.APIDefinition) error {
 
+	return nil
+}
+
+func (g *Generator) generateStores(outdir string, api *design.APIDefinition) error {
+	NoSqlDesign.IterateStores(func(store *NoSqlStoreDefinition) error {
+		if store.Type == Cassandra {
+			dir := outdir + "/cassandra"
+			filename := dir + "/datastore.go"
+
+			err := os.RemoveAll(filename)
+			if err != nil {
+				fmt.Println(err)
+			}
+			cWr, err := NewCassandraWriter(filename)
+			if err != nil {
+				return err
+			}
+			title := fmt.Sprintf("%s: Cassandra DataStore", api.Context())
+			imports := []*codegen.ImportSpec{
+				codegen.SimpleImport(g.appPkgPath),
+				codegen.SimpleImport("time"),
+				codegen.SimpleImport("github.com/goadesign/goa"),
+
+				codegen.SimpleImport("context"),
+				codegen.SimpleImport("github.com/goadesign/goa/uuid"),
+				codegen.SimpleImport("github.com/gocql/gocql"),
+				codegen.SimpleImport(outdir),
+			}
+			cWr.WriteHeader(title, "cassandra", imports)
+			data := &CassandraTmplData{
+				Cluster:  store.Cluster,
+				KeySpace: store.KeySpace,
+			}
+			err = cWr.Execute(data)
+			g.genfiles = append(g.genfiles, filename)
+			if err != nil {
+				fmt.Println(err)
+				return err
+			}
+			err = cWr.FormatCode()
+			if err != nil {
+				fmt.Println(err)
+			}
+			return err
+		}
+
+		return nil
+
+	})
 	return nil
 }
