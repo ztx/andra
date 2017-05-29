@@ -3,10 +3,5 @@ language: go
 go:
   - master
   
-Install:
-# Install all external dependencies, ensuring they are updated.
-- go get -u -v $(go list -f '{{join .Imports "\n"}}{{"\n"}}{{join .TestImports "\n"}}' ./... | sort | uniq )
-
-
 script:
  - go test -v ./...
