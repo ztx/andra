@@ -40,6 +40,7 @@ func (sd *LOVDefinition) DSLName() string {
 	return "Andra LOV for field Validation"
 }
 
+//Context satisfies dslengine.Definition
 func (f *LOVValueDefinition) Context() string {
 	if f.Name != "" {
 		return fmt.Sprintf("LOV Value %#v", f.Name)
