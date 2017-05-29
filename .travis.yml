@@ -3,5 +3,14 @@ language: go
 go:
   - master
   
+branches: 
+  only: 
+    - master
+matrix:
+  include:
+    - os: linux
+      env: GIMME_OS=windows; GIMME_ARCH=amd64;
+    - os: osx
+  
 script:
  - go test -v ./...
