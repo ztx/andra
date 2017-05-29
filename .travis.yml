@@ -1,7 +1,12 @@
 language: go
 
 go:
-  - master
+  - 1.8.x
+
+branches:
+  only:
+    - master
+    - cleanupchanges
   
 script:
  - go test -v ./...
