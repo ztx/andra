@@ -8,5 +8,6 @@ Install:
 
 run:
 `goagen gen --pkg-path github.com/ztx/andra -d path-to/design-pkg`
+
 eg:
 `goagen gen --pkg-path github.com/ztx/andra -d github.com/ztx/andra/example/design`
