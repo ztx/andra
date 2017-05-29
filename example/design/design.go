@@ -4,7 +4,7 @@ import (
 	. "github.com/goadesign/goa"
 	"github.com/ztx/andra"
 	. "github.com/ztx/andra/dsl"
-	"github.com/ztx/entp/designsvc"
+	"github.com/ztx/andra/example/designsvc"
 )
 
 var _ = StorageGroup("entp", func() {
