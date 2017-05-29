@@ -36,7 +36,7 @@ var _ = StorageGroup("entp", func() {
 		})
 		Field("pr_num", andra.String, func() {
 			CQLTag("unique_index")
-			ValidateByLOV("ItemType")
+
 		})
 		Field("approved_qty", andra.Integer)
 

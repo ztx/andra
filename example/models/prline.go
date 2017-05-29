@@ -28,11 +28,15 @@ type PrLine struct {
 	Pr       Pr
 }
 
-// TableName overrides the table name settings in Gorm to force a specific table name
+// TableName overrides the table name settings  to force a specific table name
 // in the database.
 func (m PrLine) TableName() string {
 
 	return "pr_line"
+}
+
+func (m PrLine) PrimaryKeys() []string {
+	return []string{"ID"}
 }
 
 //ValueHolders return a collection of struct field pointers
@@ -76,6 +80,51 @@ func (m *PrLine) ValueHolder(attrib string) interface{} {
 	case "Sl":
 		out = &m.Sl
 
+	}
+	return out
+}
+
+//if a filed pointer is nil that field will not be returned instead
+//a nil is returned
+func (m *PrLine) ValueHolderNil(attrib string) interface{} {
+	var out interface{}
+	switch attrib {
+	case "ID":
+		if m.ID != nil {
+			out = &m.ID
+		} else {
+			out = nil
+		}
+	case "ItemCode":
+		if m.ItemCode != nil {
+			out = &m.ItemCode
+		} else {
+			out = nil
+		}
+	case "PrID":
+		if m.PrID != nil {
+			out = &m.PrID
+		} else {
+			out = nil
+		}
+	case "Price":
+		if m.Price != nil {
+			out = &m.Price
+		} else {
+			out = nil
+		}
+	case "Qty":
+		if m.Qty != nil {
+			out = &m.Qty
+		} else {
+			out = nil
+		}
+	case "Sl":
+		if m.Sl != nil {
+			out = &m.Sl
+		} else {
+			out = nil
+		}
 	}
 	return out
 }

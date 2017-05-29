@@ -25,11 +25,15 @@ type Item struct {
 	Uom  *string
 }
 
-// TableName overrides the table name settings in Gorm to force a specific table name
+// TableName overrides the table name settings  to force a specific table name
 // in the database.
 func (m Item) TableName() string {
 
 	return "item_master"
+}
+
+func (m Item) PrimaryKeys() []string {
+	return []string{"ID"}
 }
 
 //ValueHolders return a collection of struct field pointers
@@ -67,6 +71,39 @@ func (m *Item) ValueHolder(attrib string) interface{} {
 	case "Uom":
 		out = &m.Uom
 
+	}
+	return out
+}
+
+//if a filed pointer is nil that field will not be returned instead
+//a nil is returned
+func (m *Item) ValueHolderNil(attrib string) interface{} {
+	var out interface{}
+	switch attrib {
+	case "Code":
+		if m.Code != nil {
+			out = &m.Code
+		} else {
+			out = nil
+		}
+	case "ID":
+		if m.ID != nil {
+			out = &m.ID
+		} else {
+			out = nil
+		}
+	case "Name":
+		if m.Name != nil {
+			out = &m.Name
+		} else {
+			out = nil
+		}
+	case "Uom":
+		if m.Uom != nil {
+			out = &m.Uom
+		} else {
+			out = nil
+		}
 	}
 	return out
 }

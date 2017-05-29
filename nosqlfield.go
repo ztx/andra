@@ -53,6 +53,14 @@ func (f *NoSqlFieldDefinition) FieldDefinition() string {
 	return def
 }
 
+func (f *NoSqlFieldDefinition) ColumnName() string {
+	out := f.DatabaseFieldName
+	if out == "" {
+		out = f.Underscore()
+	}
+	return out
+}
+
 // Tags returns the sql and gocql struct tags for the Definition.
 func (f *NoSqlFieldDefinition) Tags() string {
 	return tags(f)

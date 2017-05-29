@@ -35,12 +35,17 @@ const (
 	modelDataStoreT = `
 	{{$ut := .UserType}}{{$ap := .AppPkg}}// {{if $ut.Description}}{{$ut.Description}}{{else}}{{$ut.ModelName}} NoSql Model{{end}}
 {{$ut.StructDefinition}}
-// TableName overrides the table name settings in Gorm to force a specific table name
+// TableName overrides the table name settings  to force a specific table name
 // in the database.
 func (m {{$ut.ModelName}}) TableName() string {
 {{ if ne $ut.Alias "" }}
 return "{{ $ut.Alias}}" {{ else }} return "{{ $ut.TableName }}"
 {{end}}
+}
+
+func (m {{$ut.ModelName}}) PrimaryKeys() []string{
+	return []string{ {{range $ut.PrimaryKeys}} "{{.FieldName}}", {{end}}
+ }
 }
 
 //ValueHolders return a collection of struct field pointers 
@@ -71,6 +76,21 @@ var out interface{}
 		{{end}}
 	}
 return out	
+}
+
+//if a filed pointer is nil that field will not be returned instead
+//a nil is returned
+func (m *{{$ut.ModelName}}) ValueHolderNil(attrib string) interface{} {
+	var out interface{}
+	switch attrib { {{range $i, $field := $ut.Fields}}
+	case "{{$field}}":
+		if m.{{$field}} != nil {
+			out = &m.{{$field}}
+		} else {
+			out = nil
+		} {{end}}
+	}
+	return out
 }
 
 //Validate will validate a model

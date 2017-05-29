@@ -26,11 +26,15 @@ type Pr struct {
 	PrNum       *string `sql:"unique_index"`
 }
 
-// TableName overrides the table name settings in Gorm to force a specific table name
+// TableName overrides the table name settings  to force a specific table name
 // in the database.
 func (m Pr) TableName() string {
 
 	return "pr_header"
+}
+
+func (m Pr) PrimaryKeys() []string {
+	return []string{"ID"}
 }
 
 //ValueHolders return a collection of struct field pointers
@@ -72,6 +76,39 @@ func (m *Pr) ValueHolder(attrib string) interface{} {
 	return out
 }
 
+//if a filed pointer is nil that field will not be returned instead
+//a nil is returned
+func (m *Pr) ValueHolderNil(attrib string) interface{} {
+	var out interface{}
+	switch attrib {
+	case "ApprovedQty":
+		if m.ApprovedQty != nil {
+			out = &m.ApprovedQty
+		} else {
+			out = nil
+		}
+	case "ID":
+		if m.ID != nil {
+			out = &m.ID
+		} else {
+			out = nil
+		}
+	case "PrDate":
+		if m.PrDate != nil {
+			out = &m.PrDate
+		} else {
+			out = nil
+		}
+	case "PrNum":
+		if m.PrNum != nil {
+			out = &m.PrNum
+		} else {
+			out = nil
+		}
+	}
+	return out
+}
+
 //Validate will validate a model
 func (m *Pr) Validate() bool {
 	if m.ID == nil {
@@ -79,10 +116,6 @@ func (m *Pr) Validate() bool {
 		return false
 	}
 
-	if m.PrNum != FinishedItem && m.PrNum != MakeItem {
-		log.Println(errors.New("Invalid value for an attribute"))
-		return false
-	}
 	return true
 }
 

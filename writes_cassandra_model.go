@@ -46,15 +46,54 @@ const (
 	*{{$dp}}.{{$ut.ModelName}}
 }
 
+type {{$ut.ModelName}}Model struct {
+	{{$dp}}.{{$ut.ModelName}}Storage
+}
+
 //
-func (item {{$ut.ModelName}}) ColumnOf(attrib string) string {
+func (m {{$ut.ModelName}}) ColumnOf(attrib string) string {
 	out := ""
-	switch attrib {
-		{{range $ut.Fields}} 
+	switch attrib { {{range $ut.Fields}} 
 		case "{{.}}":
 			out = "{{$ut.ColumnName .}}"{{end}}
 	}
 	return out
+}
+
+func (m {{$ut.ModelName}}) ColumnsOf(attribs ...string) []string {
+	out := []string{}
+	for _,s := range attribs {
+		out = append(out,m.ColumnOf(s))
+	}
+	return out
+}
+
+func (m *{{$ut.ModelName}}) SelectCQL(attribs ...string) (query string, values []interface{}, err error) {
+	//leave the validation of attribute names to ValueHolders
+	//as it will panic for invalid attribute names
+
+	values = m.ValueHolders(attribs...)
+	columns := make([]string, len(attribs))
+	for i, a := range attribs {
+		columns[i] = m.ColumnOf(a)
+	}
+	query = "SELECT " +
+		strings.Join(columns, ",") +
+		" FROM " +
+		m.TableName() +
+		" WHERE "
+
+	whereCond := []string{}
+	whereValues := []interface{}{}
+
+	for _, k := range m.PrimaryKeys() {
+		whereCond = append(whereCond, k+"=?")
+		whereValues = append(whereValues, m.ValueHolder(k))
+	}
+	
+	query = query + strings.Join(whereCond, " AND ")	
+	values = append(values, whereValues...)
+	return
 }
 
 
@@ -64,13 +103,13 @@ func (m *{{$ut.ModelName}})Model()*{{$dp}}.{{$ut.ModelName}}{
 }
 
 func (m {{$ut.ModelName}}) InsertCQL() (query string, values []interface{}, err error) {
-	query = "INSERT INTO {{if ne $ut.Alias ""}}{{$ut.Alias}}{{else}}{{$ut.Table}}{{end}}("
+	query = "INSERT INTO " + m.TableName()
 	columns := []string{}
 	columnValues := []interface{}{}
 	{{range $ut.Fields}}
 	if m.{{.}} != nil {
-		columns = append(columns, "{{$ut.ColumnName .}}")
-		columnValues = append(columnValues, &item.{{.}})
+		columns = append(columns, m.ColumnOf("{{.}}"))
+		columnValues = append(columnValues, &m.{{.}})
 	}
 	{{end}}
 

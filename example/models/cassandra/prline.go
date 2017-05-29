@@ -16,6 +16,7 @@ import (
 	"github.com/ztx/andra/example/app"
 	"github.com/ztx/andra/example/models"
 	"golang.org/x/net/context"
+	"strings"
 	"time"
 )
 
@@ -23,11 +24,14 @@ type PrLine struct {
 	*models.PrLine
 }
 
+type PrLineModel struct {
+	models.PrLineStorage
+}
+
 //
-func (item PrLine) ColumnOf(attrib string) string {
+func (m PrLine) ColumnOf(attrib string) string {
 	out := ""
 	switch attrib {
-
 	case "ID":
 		out = "id"
 	case "ItemCode":
@@ -44,44 +48,80 @@ func (item PrLine) ColumnOf(attrib string) string {
 	return out
 }
 
+func (m PrLine) ColumnsOf(attribs ...string) []string {
+	out := []string{}
+	for _, s := range attribs {
+		out = append(out, m.ColumnOf(s))
+	}
+	return out
+}
+
+func (m *PrLine) SelectCQL(attribs ...string) (query string, values []interface{}, err error) {
+	//leave the validation of attribute names to ValueHolders
+	//as it will panic for invalid attribute names
+
+	values = m.ValueHolders(attribs...)
+	columns := make([]string, len(attribs))
+	for i, a := range attribs {
+		columns[i] = m.ColumnOf(a)
+	}
+	query = "SELECT " +
+		strings.Join(columns, ",") +
+		" FROM " +
+		m.TableName() +
+		" WHERE "
+
+	whereCond := []string{}
+	whereValues := []interface{}{}
+
+	for _, k := range m.PrimaryKeys() {
+		whereCond = append(whereCond, k+"=?")
+		whereValues = append(whereValues, m.ValueHolder(k))
+	}
+
+	query = query + strings.Join(whereCond, " AND ")
+	values = append(values, whereValues...)
+	return
+}
+
 //Model returns the containing model
 func (m *PrLine) Model() *models.PrLine {
 	return m.PrLine
 }
 
 func (m PrLine) InsertCQL() (query string, values []interface{}, err error) {
-	query = "INSERT INTO pr_line("
+	query = "INSERT INTO " + m.TableName()
 	columns := []string{}
 	columnValues := []interface{}{}
 
 	if m.ID != nil {
-		columns = append(columns, "id")
-		columnValues = append(columnValues, &item.ID)
+		columns = append(columns, m.ColumnOf("ID"))
+		columnValues = append(columnValues, &m.ID)
 	}
 
 	if m.ItemCode != nil {
-		columns = append(columns, "item_code")
-		columnValues = append(columnValues, &item.ItemCode)
+		columns = append(columns, m.ColumnOf("ItemCode"))
+		columnValues = append(columnValues, &m.ItemCode)
 	}
 
 	if m.PrID != nil {
-		columns = append(columns, "pr_id")
-		columnValues = append(columnValues, &item.PrID)
+		columns = append(columns, m.ColumnOf("PrID"))
+		columnValues = append(columnValues, &m.PrID)
 	}
 
 	if m.Price != nil {
-		columns = append(columns, "price")
-		columnValues = append(columnValues, &item.Price)
+		columns = append(columns, m.ColumnOf("Price"))
+		columnValues = append(columnValues, &m.Price)
 	}
 
 	if m.Qty != nil {
-		columns = append(columns, "qty")
-		columnValues = append(columnValues, &item.Qty)
+		columns = append(columns, m.ColumnOf("Qty"))
+		columnValues = append(columnValues, &m.Qty)
 	}
 
 	if m.Sl != nil {
-		columns = append(columns, "sl")
-		columnValues = append(columnValues, &item.Sl)
+		columns = append(columns, m.ColumnOf("Sl"))
+		columnValues = append(columnValues, &m.Sl)
 	}
 
 	query = query + strings.Join(columns, ",") + ")"

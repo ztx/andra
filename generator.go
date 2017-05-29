@@ -90,9 +90,9 @@ func (g *Generator) Generate(api *design.APIDefinition) (_ []string, err error) 
 	if err := g.generateUserTypes(g.outDir, api); err != nil {
 		return g.genfiles, err
 	}
-	if err := g.generateUserHelpers(g.outDir, api); err != nil {
-		return g.genfiles, err
-	}
+	// if err := g.generateUserHelpers(g.outDir, api); err != nil {
+	// 	return g.genfiles, err
+	// }
 
 	if err := g.generateStores(g.outDir, api); err != nil {
 		return g.genfiles, err
@@ -199,6 +199,7 @@ func (g *Generator) generateUserTypes(outdir string, api *design.APIDefinition) 
 			codegen.SimpleImport("golang.org/x/net/context"),
 			codegen.SimpleImport("github.com/goadesign/goa/uuid"),
 			codegen.SimpleImport("errors"),
+			codegen.SimpleImport("strings"),
 			codegen.SimpleImport("log"),
 			codegen.SimpleImport(g.modelPkgPath),
 		}
