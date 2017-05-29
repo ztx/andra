@@ -1,11 +1,11 @@
 package strings
 
-//Each runs the function 'ef' on each item in the slice
+//Each runs the function 'do' on each item in the slice
 //and returns the resulting slice
-func Each(strs []string, ef func(string) string) []string {
+func Each(strs []string, do func(string) string) []string {
 	var out []string
 	for _, s := range strs {
-		out = append(out, ef(s))
+		out = append(out, do(s))
 	}
 	return out
 }
