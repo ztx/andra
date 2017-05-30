@@ -61,6 +61,7 @@ type NoSqlModelDefinition struct {
 	PartitionKeys    []*NoSqlFieldDefinition
 	ReadOnlyFields   []*NoSqlFieldDefinition
 	ClusterKeys      []*NoSqlFieldDefinition
+	IndexedFields    []*NoSqlFieldDefinition
 }
 
 // BuildSource stores the BuildsFrom sources
@@ -140,6 +141,7 @@ type NoSqlFieldDefinition struct {
 	PartitionKey      bool
 	ClusterKey        bool
 	ReadOnly          bool
+	Indexed           bool
 	Mappings          map[string]*MapDefinition
 
 	LOV *LOVDefinition
