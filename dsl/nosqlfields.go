@@ -137,7 +137,7 @@ func PartitionKey() {
 
 		f.PartitionKey = true
 		f.Nullable = false
-		f.Description = "partition key"
+		f.Description = f.Description + " 'partition key' "
 		f.Parent.PartitionKeys = append(f.Parent.PartitionKeys, f)
 	}
 }
@@ -150,21 +150,26 @@ func ClusterKey() {
 
 		f.ClusterKey = true
 		f.Nullable = false
-		f.Description = "Cluster key"
+		f.Description = f.Description + " 'Cluster key' "
 		f.Parent.ClusterKeys = append(f.Parent.ClusterKeys, f)
 	}
 }
 
 func ReadOnly() {
 	if f, ok := isNoSqlFieldDefinition(true); ok {
-		if f.Datatype != andra.Integer && f.Datatype != andra.UUID {
-			dslengine.ReportError("Integer and UUID are the only supported Primary Key field types.")
-		}
 
 		f.ReadOnly = true
-		f.Nullable = false
-		f.Description = "Readonly field"
+		f.Description = f.Description + " 'Readonly field' "
 		f.Parent.ReadOnlyFields = append(f.Parent.ReadOnlyFields, f)
+	}
+}
+
+func Indexed() {
+	if f, ok := isNoSqlFieldDefinition(true); ok {
+
+		f.Indexed = true
+		f.Description = f.Description + " 'Readonly field' "
+		f.Parent.IndexedFields = append(f.Parent.IndexedFields, f)
 	}
 }
 

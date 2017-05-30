@@ -499,6 +499,11 @@ const (
 	// template input: UserTypeTemplateData
 	userTypeT = `{{$ut := .UserType}}{{$ap := .AppPkg}}// {{if $ut.Description}}{{$ut.Description}}{{else}}{{$ut.ModelName}} NoSql Model{{end}}
 {{$ut.StructDefinition}}
+
+type Cql string
+
+type CqlFunc func(Cql) Cql
+
 // TableName overrides the table name settings in Gorm to force a specific table name
 // in the database.
 func (m {{$ut.ModelName}}) TableName() string {
@@ -729,7 +734,7 @@ func (m {{$ut.ModelName}}) GetRole() string {
 	mediaT = `// MediaType Retrieval Functions
 
 // List{{goify .Media.TypeName true}}{{if not (eq .ViewName "default")}}{{goify .ViewName true}}{{end}} returns an array of view: {{.ViewName}}.
-func (m *{{.Model.ModelName}}DB) List{{goify .Media.TypeName true}}{{if not (eq .ViewName "default")}}{{goify .ViewName true}}{{end}}{{/*
+func (m *{{.Model.ModelName}}Model) List{{goify .Media.TypeName true}}{{if not (eq .ViewName "default")}}{{goify .ViewName true}}{{end}}{{/*
 */}} (ctx context.Context{{ if .Model.DynamicTableName}}, tableName string{{ end }}{{/*
 */}} {{range $nm, $bt := .Model.BelongsTo}},{{goify (printf "%s%s" $bt.ModelName "ID") false}} int{{end}}){{/*
 */}} []*app.{{goify .Media.TypeName true}}{{if not (eq .ViewName "default")}}{{goify .ViewName true}}{{end}}{

@@ -35,6 +35,7 @@ func (w *CassandraModelWriter) Execute(data *UserTypeTemplateData) error {
 	fm["plural"] = inflect.Pluralize
 	fm["gtt"] = codegen.GoTypeTransform
 	fm["gttn"] = codegen.GoTypeTransformName
+	fm["newMediaTemplate"] = newMediaTemplate
 	return w.ExecuteTemplate("casModelT", casModelT, fm, data)
 }
 
@@ -46,6 +47,27 @@ const (
 	*{{$dp}}.{{$ut.ModelName}}
 }
 
+type SelectQuery struct {
+	model           *{{$ut.ModelName}}Model
+	selectedColumns []string
+	table           string
+	whereClause     []string
+	values          []interface{}
+
+	//
+	cql    string
+	cItem  *{{$ut.ModelName}}
+	result []{{$ut.ModelName}}
+}
+{{range $ut.IndexedFields}}
+//FilterBy{{.FieldName}} appends a where clause to CQL
+func (q *SelectQuery) FilterBy{{.FieldName}}(val {{goDatatype . true}})  *SelectQuery {
+	q.whereClause = append(q.whereClause, q.cItem.ColumnOf("{{.FieldName}}")+"=?")
+	q.values = append(q.values, val)
+	return q
+} {{end}}
+
+//Model implements {{$dp}}.{{$ut.ModelName}}Storage for cassandra db
 type {{$ut.ModelName}}Model struct {
 	{{$dp}}.{{$ut.ModelName}}Storage
 }
@@ -124,6 +146,21 @@ func (m {{$ut.ModelName}}) InsertCQL() (query string, values []interface{}, err 
 	values = columnValues
 	return
 }
+
+{{define "Media"}}` + mediaT2 + `{{end}}` + `{{$ut := .UserType}}{{$ap := .AppPkg}}
+{{ if $ut.Roler }}
+// GetRole returns the value of the role field and satisfies the Roler interface.
+func (m {{$ut.ModelName}}) GetRole() string {
+	return {{$f := $ut.Fields.role}}{{if $f.Nullable}}*{{end}}m.Role
+}
+{{end}}
+
+{{ range $rname, $rmt := $ut.RenderTo }}
+{{ range $vname, $view := $rmt.Views}}
+{{ $mtd := $ut.Project $rname $vname }}
+
+{{template "Media" (newMediaTemplate $rmt $vname $view $ut)}}
+{{end}}{{end}}
 
 {{ range $idx, $bt := $ut.BelongsTo}}
 // Belongs To Relationships
@@ -248,4 +285,62 @@ func (m *{{$ut.ModelName}}Model)UpdateFrom{{$bfn}}(ctx context.Context{{ if $ut.
 }
 {{ end  }}
 	`
+
+	mediaT2 = `// MediaType Retrieval Functions
+
+// List{{goify .Media.TypeName true}}{{if not (eq .ViewName "default")}}{{goify .ViewName true}}{{end}} returns an array of view: {{.ViewName}}.
+func (m *{{.Model.ModelName}}Model) List{{goify .Media.TypeName true}}{{if not (eq .ViewName "default")}}{{goify .ViewName true}}{{end}}{{/*
+*/}} (ctx context.Context{{ if .Model.DynamicTableName}}, tableName string{{ end }}{{/*
+*/}} {{range $nm, $bt := .Model.BelongsTo}},{{goify (printf "%s%s" $bt.ModelName "ID") false}} int{{end}}){{/*
+*/}} []*app.{{goify .Media.TypeName true}}{{if not (eq .ViewName "default")}}{{goify .ViewName true}}{{end}}{
+	defer goa.MeasureSince([]string{"goa","db","{{goify .Media.TypeName false}}", "list{{goify .Media.TypeName false}}{{if eq .ViewName "default"}}{{else}}{{goify .ViewName false}}{{end}}"}, time.Now())
+
+	var native []*{{goify .Model.ModelName true}}
+	var objs []*app.{{goify .Media.TypeName true}}{{if not (eq .ViewName "default")}}{{goify .ViewName true}}{{end}}{{$ctx:= .}}
+	err := m.Db.Scopes({{range $nm, $bt := .Model.BelongsTo}}{{/*
+*/}}{{$ctx.Model.ModelName}}FilterBy{{goify $bt.ModelName true}}({{goify (printf "%s%s" $bt.ModelName "ID") false}}, m.Db), {{end}}){{/*
+*/}}.Table({{ if .Model.DynamicTableName }}tableName{{else}}m.TableName(){{ end }}).{{ range $ln, $lv := .Media.Links }}Preload("{{goify $ln true}}").{{end}}Find(&native).Error
+{{/* //	err := m.Db.Table({{ if .Model.DynamicTableName }}tableName{{else}}m.TableName(){{ end }}).{{ range $ln, $lv := .Media.Links }}Preload("{{goify $ln true}}").{{end}}Find(&objs).Error */}}
+	if err != nil {
+		goa.LogError(ctx, "error listing {{.Model.ModelName}}", "error", err.Error())
+		return objs
+	}
+
+	for _, t := range native {
+		objs = append(objs, t.{{.Model.ModelName}}To{{goify .Media.UserTypeDefinition.TypeName true}}{{if eq .ViewName "default"}}{{else}}{{goify .ViewName true}}{{end}}())
+	}
+
+	return objs
+}
+
+// {{$.Model.ModelName}}To{{goify .Media.UserTypeDefinition.TypeName true}}{{if not (eq .ViewName "default")}}{{goify .ViewName true}}{{end}}{{/*
+*/}} loads a {{.Model.ModelName}} and builds the {{.ViewName}} view of media type {{.Media.TypeName}}.
+func (m *{{.Model.ModelName}}) {{$.Model.ModelName}}To{{goify .Media.UserTypeDefinition.TypeName true}}{{if not (eq .ViewName "default")}}{{goify .ViewName true}}{{end}}(){{/*
+*/}} *app.{{goify .Media.TypeName true}}{{if not (eq .ViewName "default")}}{{goify .ViewName true}}{{end}} {
+	{{.Model.LowerName}} := &app.{{goify .Media.TypeName true}}{{if not (eq .ViewName "default")}}{{goify .ViewName true}}{{end}}{}
+ 	{{ famt .Model .View "m" "m" .Model.LowerName}}
+
+ 	 return {{.Model.LowerName}}
+}
+
+// One{{goify .Media.TypeName true}}{{if not (eq .ViewName "default")}}{{goify .ViewName true}}{{end}} loads a {{.Model.ModelName}} and builds the {{.ViewName}} view of media type {{.Media.TypeName}}.
+func (m *{{.Model.ModelName}}DB) One{{goify .Media.TypeName true}}{{if not (eq .ViewName "default")}}{{goify .ViewName true}}{{end}}{{/*
+*/}} (ctx context.Context{{ if .Model.DynamicTableName}}, tableName string{{ end }},{{.Model.PKAttributes}}{{/*
+*/}}{{range $nm, $bt := .Model.BelongsTo}},{{goify (printf "%s%s" $bt.ModelName "ID") false}} int{{end}}){{/*
+*/}} (*app.{{goify .Media.TypeName true}}{{if not (eq .ViewName "default")}}{{goify .ViewName true}}{{end}}, error){
+	defer goa.MeasureSince([]string{"goa","db","{{goify .Media.TypeName false}}", "one{{goify .Media.TypeName false}}{{if not (eq .ViewName "default")}}{{goify .ViewName false}}{{end}}"}, time.Now())
+
+	var native {{.Model.ModelName}}
+	
+	if err != nil && err !=  gorm.ErrRecordNotFound {
+		goa.LogError(ctx, "error getting {{.Model.ModelName}}", "error", err.Error())
+		return nil, err
+	}
+	{{ if .Model.Cached }} go func(){
+		m.cache.Set(strconv.Itoa(native.ID), &native, cache.DefaultExpiration)
+	}() {{ end }}
+	view := *native.{{.Model.ModelName}}To{{goify .Media.UserTypeDefinition.TypeName true}}{{if not (eq .ViewName "default")}}{{goify .ViewName true}}{{end}}()
+	return &view, err
+}
+`
 )

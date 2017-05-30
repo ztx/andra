@@ -195,8 +195,8 @@ func (g *Generator) generateUserTypes(outdir string, api *design.APIDefinition) 
 			codegen.SimpleImport("time"),
 			codegen.SimpleImport("github.com/goadesign/goa"),
 			codegen.SimpleImport("github.com/jinzhu/gorm"),
-			codegen.SimpleImport("golang.org/x/net/context"),
-			codegen.SimpleImport("golang.org/x/net/context"),
+			codegen.SimpleImport("context"),
+
 			codegen.SimpleImport("github.com/goadesign/goa/uuid"),
 			codegen.SimpleImport("errors"),
 			codegen.SimpleImport("strings"),
